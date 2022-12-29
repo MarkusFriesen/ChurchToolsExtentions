@@ -1,5 +1,6 @@
 using ChurchToolsExtentions;
 using ChurchToolsExtentions.Models;
+using Microsoft.Extensions.Options;
 
 namespace ChurchToolsSongExtentionTests;
 
@@ -9,12 +10,14 @@ public class FileDownloaderTests
     [Fact]
     public async Task TestAllFileDownload()
     {
-        var downloader = new FileSynchronizer(new ConnectionSettings()
+        IOptions<ConnectionSettings> options = Options.Create<ConnectionSettings>(new ()
         {
             Instance = "test",
             Username = "test",
             Password = "test"
         });
+
+        var downloader = new FileSynchronizer(options);
 
         var files = await downloader.TaskGetAllFiles();
 

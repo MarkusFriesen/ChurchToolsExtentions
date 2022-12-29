@@ -2,6 +2,8 @@
 using ChurchToolsExtentions.Models;
 using DownloadAllSongBeamerFiles;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Serilog;
 using System.Text.Json;
 
 if (ShowHelpRequired(args))
@@ -16,19 +18,27 @@ Requiered Parameters:
     return;
 }
 
+AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
+
 var configuration = new ConfigurationBuilder()
                         .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                         .AddCommandLine(args)
                         .Build();
 
 Configuration config = VerifyAndReturnConfiguration(configuration);
-var downloader = new FileSynchronizer(new ConnectionSettings()
+
+IOptions<ConnectionSettings> options = Options.Create<ConnectionSettings>(new()
 {
     Instance = config.Instance ?? "", // Make the compiler happy. We already checked that the instnaces are not null in VerifyAndReturnConfiguration
     Username = config.Username ?? "",
     Password = config.Password ?? ""
 });
+var downloader = new FileSynchronizer(options);
 
+Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(configuration) // reference: https://github.com/serilog/serilog-settings-configuration
+                .Enrich.FromLogContext()
+                .CreateLogger();
 
 var files = await downloader.TaskGetAllFiles();
 var arrangements = files?.SelectMany(s =>
@@ -47,7 +57,14 @@ await DownloadAllFiles(config, downloader, arrangements, previousFetch);
 
 File.WriteAllText(fetchFileName, JsonSerializer.Serialize(arrangements));
 
-Console.WriteLine("Finished.");
+Log.Information("Finished.");
+
+static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+{
+    var exception = e.ExceptionObject as Exception;
+    Log.Logger.Fatal(exception, "Unhandeled exception!: {message}", exception?.Message);
+    Log.CloseAndFlush();
+}
 
 static void EnsureUniqueFileNames(List<FileWithCategory>? arrangements)
 {
@@ -57,7 +74,7 @@ static void EnsureUniqueFileNames(List<FileWithCategory>? arrangements)
     {
         if (previousFileName == file.File.Name)
         {
-            Console.WriteLine("Duplicate filenames: {0} at {1}", file.File.Name, file.File.FileUrl);
+            Log.Warning("Duplicate filenames: {0} at {1}", file.File.Name, file.File.FileUrl);
         }
 
         previousFileName = file.File.Name;
@@ -75,7 +92,7 @@ static List<ArrangementFile>? GetPreviousFetchResult(string fetchFileName)
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            Log.Error(ex.Message);
         }
     }
 
@@ -135,12 +152,12 @@ static async Task DownloadAllFiles(Configuration config, FileSynchronizer downlo
             var info = previousFetch?.FirstOrDefault(p => p.Name == arrangement.File.Name);
             if (info?.Meta?.ModifiedDate == arrangement.File.Meta.ModifiedDate)
             {
-                Console.WriteLine("Skipped {0}", arrangement.File.Name);
+                Log.Information("Skipped {0}", arrangement.File.Name);
                 continue;
             }
         }
         await downloader.DownloadFile(arrangement.File, folder);
-        Console.WriteLine("Downloaded {0}", arrangement.File.Name);
+        Log.Information("Downloaded {0}", arrangement.File.Name);
     }
 }
 

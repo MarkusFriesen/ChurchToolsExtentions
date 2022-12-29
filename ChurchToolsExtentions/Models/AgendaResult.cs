@@ -26,7 +26,7 @@ public class Item
 public class ItemSong
 {
     public string Arrangement { get; set; } = string.Empty;
-    public int arrangementId { get; set; }
+    public int ArrangementId { get; set; }
     public string Title { get; set; } = string.Empty;
     public int SongId { get; set; }
 }
