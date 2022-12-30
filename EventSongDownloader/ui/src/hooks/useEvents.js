@@ -24,7 +24,7 @@ export default function useEvents(date) {
       var result = await client.get(`api/events/month?month=${queryDate}`);
       
       setEvents(result.data)
-      const allDays = new Set(result.data.map(d => new Date(d.startDate).getDay() + 1))
+      const allDays = new Set(result.data.map(d => new Date(d.startDate).getDate()))
       setDaysWithEvents([...allDays])
       setLoading(false)
     }
