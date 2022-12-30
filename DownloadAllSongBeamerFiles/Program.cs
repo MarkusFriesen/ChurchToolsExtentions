@@ -51,13 +51,15 @@ EnsureUniqueFileNames(arrangements);
 
 var fetchFileName = Path.Combine(config.OutDir, "lastFetch.json");
 
-List<ArrangementFile>? previousFetch = GetPreviousFetchResult(fetchFileName);
+List<FileWithCategory>? previousFetch = GetPreviousFetchResult(fetchFileName);
 
 await DownloadAllFiles(config, downloader, arrangements, previousFetch);
 
 File.WriteAllText(fetchFileName, JsonSerializer.Serialize(arrangements));
 
 Log.Information("Finished.");
+
+Environment.Exit(0);
 
 static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
 {
@@ -81,14 +83,14 @@ static void EnsureUniqueFileNames(List<FileWithCategory>? arrangements)
     }
 }
 
-static List<ArrangementFile>? GetPreviousFetchResult(string fetchFileName)
+static List<FileWithCategory>? GetPreviousFetchResult(string fetchFileName)
 {
-    List<ArrangementFile>? previousFetch = null;
+    List<FileWithCategory>? previousFetch = null;
     if (File.Exists(fetchFileName))
     {
         try
         {
-            previousFetch = JsonSerializer.Deserialize<List<ArrangementFile>>(File.ReadAllText(fetchFileName));
+            previousFetch = JsonSerializer.Deserialize<List<FileWithCategory>>(File.ReadAllText(fetchFileName));
         }
         catch (Exception ex)
         {
@@ -135,7 +137,7 @@ static Configuration VerifyAndReturnConfiguration(IConfigurationRoot configurati
     return config;
 }
 
-static async Task DownloadAllFiles(Configuration config, FileSynchronizer downloader, List<FileWithCategory>? arrangements, List<ArrangementFile>? previousFetch)
+static async Task DownloadAllFiles(Configuration config, FileSynchronizer downloader, List<FileWithCategory>? arrangements, List<FileWithCategory>? previousFetch)
 {
     var folder = config.OutDir;
     if (!Directory.Exists(folder))
@@ -149,8 +151,8 @@ static async Task DownloadAllFiles(Configuration config, FileSynchronizer downlo
         var fileName = Path.Combine(folder, arrangement.File.Name);
         if (File.Exists(fileName))
         {
-            var info = previousFetch?.FirstOrDefault(p => p.Name == arrangement.File.Name);
-            if (info?.Meta?.ModifiedDate == arrangement.File.Meta.ModifiedDate)
+            var info = previousFetch?.FirstOrDefault(p => p.File.Name == arrangement.File.Name);
+            if (info?.File.Meta?.ModifiedDate == arrangement.File.Meta.ModifiedDate)
             {
                 Log.Information("Skipped {0}", arrangement.File.Name);
                 continue;
