@@ -35,6 +35,7 @@ export default function EventSelector() {
       {
         events.map(e =>
         (<ListItemButton
+          key={e.id}
           id={e.id}
           selected={event === e.id?.toString()}
           onClick={(event) => handleListItemClick(event, e.id)}

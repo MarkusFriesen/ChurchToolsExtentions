@@ -9,38 +9,29 @@ namespace EventSongDownloader.Controllers;
 public class SongsController : ControllerBase
 {
     private readonly FileSynchronizer _synchronizer;
-    private readonly string directory = Path.Combine(Path.GetTempPath(), "agendas");
 
     public SongsController(FileSynchronizer synchronizer)
     {
         _synchronizer = synchronizer;
-
-        if (!Directory.Exists(directory))
-            Directory.CreateDirectory(directory);
     }
 
     [HttpPost("merge")]
     public async Task<string> Merge([FromBody] MergeParameters parameters)
     {
         var randomFileName = $"{Path.GetRandomFileName()}.pdf";
-        await _synchronizer.MergeFiles(parameters.FileUrls, Path.Combine(directory, randomFileName));
+        await _synchronizer.MergeFiles(parameters.FileUrls, Path.Combine(Constants.AgendaDirectory, randomFileName));
         return randomFileName;
     }
 
-    [HttpGet("download/{filename}")]
-    public IActionResult DownloadPdfFile(string filename, [FromQuery] string? downloadedName)
+    [HttpDelete("download/{filename}")]
+    public bool DeletePdfFile(string filename)
     {
-        var fullPath = Path.Combine(directory, filename);
-
+        var fullPath = Path.Combine(Constants.AgendaDirectory, filename);
         if (!new FileInfo(fullPath).Exists || !filename.EndsWith(".pdf"))
-            return new NotFoundResult();
+            return false;
 
-        var stream =  System.IO.File.OpenRead(fullPath);
-        string mimeType = "application/pdf";
-        return new FileStreamResult(stream, mimeType)
-        {
-            FileDownloadName = downloadedName ?? filename
-        };
+        System.IO.File.Delete(fullPath);
+        return true;
     }
 }
 

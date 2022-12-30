@@ -22,7 +22,7 @@ export default function SongSelector() {
 
   const event = searchParams.get("event")
   const {agenda, plannedSongs} = useAgenda(event);
-  const {files, mergeFiles, loading} = useSongs(event, plannedSongs);
+  const {files, mergeAndDownloadFiles, loading} = useSongs(event, plannedSongs);
 
   const handleToggle = React.useCallback((value) => () => {
     const currentIndex = checked.indexOf(value);
@@ -39,13 +39,9 @@ export default function SongSelector() {
 
   const download = React.useCallback(async () => {
     setLoading(true)
-    const mergedFileName = await mergeFiles(checked);
-
-    if (mergedFileName)
-      window.open(`/api/songs/download/${mergedFileName}?downloadedName=${encodeURIComponent(agenda.name)}.pdf`, '_', 'noopener,noreferrer');
-
+    await mergeAndDownloadFiles(checked, `${agenda.name}.pdf`);
     setLoading(false)
-  }, [agenda.name, checked, mergeFiles])
+  }, [agenda.name, checked, mergeAndDownloadFiles])
 
   if (loading) return <Spinner />
   return (

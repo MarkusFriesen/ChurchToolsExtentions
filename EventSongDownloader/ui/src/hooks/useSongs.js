@@ -1,5 +1,6 @@
 import React from "react";
 import axios from "axios";
+import savePdf from "../utils/saveFile";
 
 const client = axios.create();
 
@@ -39,7 +40,7 @@ export default function useSongs(eventId, plannedSongs) {
     setFiles(newFiels)
   }, [songs, plannedSongs])
 
-  async function mergeFiles(fileNames){
+  async function mergeAndDownloadFiles(fileNames, downloadedFileName){
     const fileUrls = files.filter(f => fileNames.includes(f.filename)).map(f => f.fileUrl)
     if (fileUrls.length < 1) return "";
 
@@ -47,10 +48,19 @@ export default function useSongs(eventId, plannedSongs) {
       fileUrls
     })
 
-    return result.data;
+
+    if (result.status !== 200) return
+
+    const file = await fetch(`api/songs/download/${result.data}`)
+
+    if (file.status !== 200) return
+    const blob = await file.blob();
+    savePdf(blob, downloadedFileName)
+
+    await client.delete(`api/songs/download/${result.data}`)
   }
 
   return {
-    songs, files, mergeFiles, loading
+    songs, files, mergeAndDownloadFiles, loading
   }
 }

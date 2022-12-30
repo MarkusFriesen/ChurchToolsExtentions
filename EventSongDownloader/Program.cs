@@ -1,5 +1,7 @@
 using ChurchToolsExtentions;
 using ChurchToolsExtentions.Models;
+using EventSongDownloader;
+using Microsoft.Extensions.FileProviders;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,6 +34,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
+
+
+if (!Directory.Exists(Constants.AgendaDirectory))
+    Directory.CreateDirectory(Constants.AgendaDirectory);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Constants.AgendaDirectory),
+    DefaultContentType= "application/pdf",
+    RequestPath = "/api/songs/download"
+});
 app.UseRouting();
 
 app.MapControllerRoute(
