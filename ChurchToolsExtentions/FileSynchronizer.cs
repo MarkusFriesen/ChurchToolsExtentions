@@ -1,10 +1,9 @@
 ﻿using ChurchToolsExtentions.Models;
+using iText.Kernel.Pdf;
+using iText.Kernel.Utils;
 using Microsoft.Extensions.Options;
-using PdfSharpCore.Pdf;
-using PdfSharpCore.Pdf.IO;
 using System.Net.Http.Json;
 using System.Text.Json;
-
 namespace ChurchToolsExtentions;
 
 public class FileSynchronizer : AuthorizedClient
@@ -53,17 +52,18 @@ public class FileSynchronizer : AuthorizedClient
 
     public async Task MergeFiles(IEnumerable<string> FileUrls, string targetFile)
     {
-        using var targetDoc = new PdfDocument();
+        using var pdf = new PdfDocument(new PdfWriter(new FileStream(targetFile, FileMode.Create, FileAccess.Write)));
+        var merger = new PdfMerger(pdf);
         foreach (var fileUrl in FileUrls)
         {
             var bytes = await GetBytes(fileUrl);
             using var stream = new MemoryStream(bytes);
-            using var pdfDoc = PdfReader.Open(stream, PdfDocumentOpenMode.Import);
-            foreach (var page in pdfDoc.Pages)
-                targetDoc.AddPage(page);
+
+            using var firstSourcePdf = new PdfDocument(new PdfReader(stream));
+            merger.Merge(firstSourcePdf, 1, firstSourcePdf.GetNumberOfPages());
         }
 
-        targetDoc.Save(targetFile);
+        pdf.Close();
         DeleteFile(targetFile, TimeSpan.FromMinutes(15));
     }
 
