@@ -26,7 +26,7 @@ export default function Calendar() {
   const { daysWithEvents } = useEvents(value);
 
   const renderDay = React.useCallback((day, _value, DayComponentProps) => {
-    const isSelected = daysWithEvents.indexOf(day.getDate()) > 0;
+    const isSelected = daysWithEvents.indexOf(day.getDate()) > -1;
     return (
       <PickersDay {...DayComponentProps} disabled={!isSelected} />
     );

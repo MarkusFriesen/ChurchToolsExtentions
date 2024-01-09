@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DownloadAllSongBeamerFiles;
+﻿namespace DownloadAllSongBeamerFiles;
 
 public class Configuration
 {
@@ -12,4 +6,6 @@ public class Configuration
     public string? Instance { get; set; }
     public string? Username { get; set; }
     public string? Password { get; set; }
+    public int? MaxNumberOfLinesPerSngSlide { get; set; }
+    public string AgendaPath { get; set; } = "/tmp";
 }

@@ -9,7 +9,7 @@ namespace ChurchToolsExtentions;
 public abstract class AuthorizedClient
 {
     internal readonly HttpClient Client;
-    private readonly string _churchtoolsInstance;
+    internal readonly string _churchtoolsInstance;
     private readonly string _username;
     private readonly string _password;
     private DateTimeOffset TokenExpires = DateTimeOffset.UtcNow;
@@ -35,7 +35,7 @@ public abstract class AuthorizedClient
 
         Client = new HttpClient(handler)
         {
-            BaseAddress = new Uri($"https://{_churchtoolsInstance}.church.tools/api/")
+            BaseAddress = new Uri($"https://{_churchtoolsInstance}.church.tools/")
         };
     }
 
@@ -50,7 +50,7 @@ public abstract class AuthorizedClient
             rememberMe = true,
             username = _username
         });
-        var result = await Client.PostAsync("login", new StringContent(content, Encoding.UTF8, "application/json"));
+        var result = await Client.PostAsync("/api/login", new StringContent(content, Encoding.UTF8, "application/json"));
         var success = result.EnsureSuccessStatusCode();
 
         var cookies = result.Headers.FirstOrDefault(h => h.Key == "Set-Cookie").Value;

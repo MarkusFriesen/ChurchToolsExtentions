@@ -25,7 +25,7 @@ namespace EventSongDownloader.Controllers
                 return null;
             }
 
-            var beginningMonth = new DateTime(month.Year, month.Month, 1);
+            var beginningMonth = new DateTimeOffset(month.Year, month.Month,1,0,0,0, new TimeSpan()).LocalDateTime;
             var endMonth = beginningMonth.AddMonths(1);
 
             var result = await _synchronizer.GetEventsAsync(beginningMonth, endMonth);

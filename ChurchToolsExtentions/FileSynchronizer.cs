@@ -6,10 +6,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 namespace ChurchToolsExtentions;
 
-public class FileSynchronizer : AuthorizedClient
+public class FileSynchronizer(IOptions<ConnectionSettings> settings) : AuthorizedClient(settings)
 {
-    public FileSynchronizer(IOptions<ConnectionSettings> settings) : base(settings) { }
-
     public async Task<List<Song>?> TaskGetAllFiles()
     {
         await GetLatestCookie();
@@ -18,7 +16,7 @@ public class FileSynchronizer : AuthorizedClient
         int lastPage;
         do
         {
-            var result = await Client.GetFromJsonAsync<SongResult>($"songs?limit=250&page={current}", options: new JsonSerializerOptions
+            var result = await Client.GetFromJsonAsync<SongResult>($"api/songs?limit=100&page={current}", options: new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
                 AllowTrailingCommas = true
@@ -75,5 +73,4 @@ public class FileSynchronizer : AuthorizedClient
             File.Delete(fileName);
         });
     }
-
 }

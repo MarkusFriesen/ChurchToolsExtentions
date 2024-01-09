@@ -4,6 +4,7 @@ using DownloadAllSongBeamerFiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Serilog;
+using System.IO.Compression;
 using System.Text.Json;
 
 if (ShowHelpRequired(args))
@@ -14,6 +15,8 @@ Requiered Parameters:
 --outDir ex: C:\temp. The directory where all files will be downloaded into.
 --username ex: username. The e-mail or username used to login.
 --password ex: password. The password used to login.
+--maxNumberOfLinesPerSngSlide ex: 2. Optional. The number of lines that a sng slide can have
+--agendaPath ex: /temp/agenda. Opional, the folder where the agenda needs to be downloaded to.
 ");
     return;
 }
@@ -49,17 +52,56 @@ var arrangements = files?.SelectMany(s =>
 
 EnsureUniqueFileNames(arrangements);
 
-var fetchFileName = Path.Combine(config.OutDir, "lastFetch.json");
+await DownloadAllSngFiles(config, downloader, arrangements);
 
-List<FileWithCategory>? previousFetch = GetPreviousFetchResult(fetchFileName);
+FormatDownloadedFiles(config);
 
-await DownloadAllFiles(config, downloader, arrangements, previousFetch);
-
-File.WriteAllText(fetchFileName, JsonSerializer.Serialize(arrangements));
-
-Log.Information("Finished.");
+await DownloadTodaysEvents();
 
 Environment.Exit(0);
+
+
+async Task DownloadTodaysEvents()
+{
+    if (Directory.Exists(config.AgendaPath))
+    {
+        Directory.Delete(config.AgendaPath, true);
+    }
+
+    Directory.CreateDirectory(config.AgendaPath);
+
+    var eventSync = new EventSynchronizer(options);
+    var today = DateTimeOffset.Now;
+    var startOfDay = today.AddDays(-1);
+    var endOfDay = today.AddDays(1);
+    var events = await eventSync.GetEventsAsync(today, endOfDay);
+
+    foreach (var ev in events?.Data?.Where(d => d.StartDate > startOfDay && d.StartDate < endOfDay) ?? [])
+    {
+        var agenda = await eventSync.GetEventAgendaAsync(ev.Id);
+        if (agenda is null) continue;
+        var file = await eventSync.DownloadSongBeamerScheduleFromEvent(agenda.Data);
+        if (file is null) continue;
+        SaveFile(file, agenda.Data);
+    }
+}
+
+void SaveFile(ZipArchive archive, Agenda agenda)
+{
+    var schedule = archive.GetEntry("Schedule.col");
+
+    var fileName = Path.Combine(config.AgendaPath, $"{ReplaceInvalidChars(agenda.Name)}.col");
+    if (File.Exists(fileName))
+    {
+        File.Delete(fileName);
+    }
+    schedule?.ExtractToFile(fileName);
+}
+
+string ReplaceInvalidChars(string filename)
+{
+    return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
+}
 
 static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
 {
@@ -147,7 +189,7 @@ static async Task DownloadAllFiles(Configuration config, FileSynchronizer downlo
 
     foreach (var arrangement in arrangements ?? new())
     {
-        
+
         var fileName = Path.Combine(folder, arrangement.File.Name);
         if (File.Exists(fileName))
         {
@@ -161,6 +203,33 @@ static async Task DownloadAllFiles(Configuration config, FileSynchronizer downlo
         await downloader.DownloadFile(arrangement.File, folder);
         Log.Information("Downloaded {0}", arrangement.File.Name);
     }
+}
+
+static void FormatDownloadedFiles(Configuration config)
+{
+    Log.Information("Formatting");
+
+    var formatter = new FileFormatter(new FormatSettings { MaxNumberOfLines = config.MaxNumberOfLinesPerSngSlide });
+    foreach (var file in Directory.GetFiles(config.OutDir, "*.sng"))
+    {
+        Log.Information("Formatting {name}", file);
+        File.WriteAllText(file, formatter.Format(File.ReadAllText(file, System.Text.Encoding.UTF8)), System.Text.Encoding.UTF8);
+    }
+
+    Log.Information("Finished Formatting");
+}
+
+static async Task DownloadAllSngFiles(Configuration config, FileSynchronizer downloader, List<FileWithCategory>? arrangements)
+{
+    var fetchFileName = Path.Combine(config.OutDir, "lastFetch.json");
+
+    List<FileWithCategory>? previousFetch = GetPreviousFetchResult(fetchFileName);
+
+    await DownloadAllFiles(config, downloader, arrangements, previousFetch);
+
+    File.WriteAllText(fetchFileName, JsonSerializer.Serialize(arrangements));
+
+    Log.Information("Finished Downloading.");
 }
 
 internal class FileWithCategory
